@@ -134,6 +134,29 @@ module Wrest
         callback.execute(response_301)
         block_executed.should be_falsey
       end
+
+      it "should execute the registered callback for an unexpected response" do
+        unexpected_response = false
+        code = 9000
+        callback = Callback.new({:anything_else => lambda{|response| unexpected_response = true}, 200 => lambda { "This is not a drill" }})
+        callback.execute(double(Net::HTTPResponse, :code => code, :message => "OK", :body => '', :to_hash => {}))
+        unexpected_response.should be_truthy
+      end
+    end
+
+    context "anything_else" do
+      let(:unexpected_response){double(Net::HTTPResponse, :code => 9000, :message => "something went wrong", :body => '', :to_hash => {})}
+      it "should register a callback on an unexpected response with the given block" do
+        callback = Callback.new({})
+        callback.anything_else {|response| }
+        expect(callback.callback_hash).to have(1).callbacks_for(:anything_else)
+      end
+
+      it "should register additional callback if a callback for an unexpected response already exists with the given block" do
+        callback = Callback.new(:anything_else => lambda{|response| })
+        callback.anything_else {|response| }
+        expect(callback.callback_hash).to have(2).callbacks_for(:anything_else)
+      end
     end
   end
 end

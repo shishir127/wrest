@@ -33,13 +33,19 @@ module Wrest
     end
 
     def execute(response)
+      valid_response = false
       callback_hash.each do |code, callback_list|
         callback_list.each {|callback| callback.call(response)} if case code
         when Range
-          code.include?(response.code.to_i)
+          valid_response = true if code.include?(response.code.to_i)
+          valid_response
         when Fixnum
-          code == response.code.to_i
+          valid_response = true if code == response.code.to_i
+          valid_response
         end
+      end
+      if not @callback_hash[:anything_else].nil? and not valid_response
+        @callback_hash[:anything_else].each {|callback| callback.call(response)} 
       end
     end
 
@@ -56,12 +62,16 @@ module Wrest
         end
       end
 
-    def self.ensure_values_are_collections(hash)
-      result = {}
-      hash.each do |code, block|
-        result[code] = block.is_a?(Array) ? block : [block]
+      def anything_else(&block)
+        (@callback_hash[:anything_else] ? @callback_hash[:anything_else] << block : @callback_hash[:anything_else] = [block]) if block
       end
-      result
+
+      def self.ensure_values_are_collections(hash)
+        result = {}
+        hash.each do |code, block|
+          result[code] = block.is_a?(Array) ? block : [block]
+        end
+        result
+      end
     end
   end
-end
